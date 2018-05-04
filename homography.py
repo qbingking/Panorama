@@ -70,7 +70,7 @@ def getBestHomography(kps1, kps2, matchedDescriptors, pairCoords, threshold=5, i
             bestHomography = homography
             bestPairPts = pairPts
 
-    print bestCntInliers
+    print 'The numbers of inliers between 2 images: {}'.format(bestCntInliers)
     # print bestHomography
     # print bestPairPts
     return bestHomography, bestPairPts
