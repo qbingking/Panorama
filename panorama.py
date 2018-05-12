@@ -4,6 +4,7 @@ from homography import *
 import cv2
 import numpy as np
 import glob
+import argparse
 
 
 def outputLimits(homography, imSize):
@@ -27,7 +28,7 @@ def outputLimits(homography, imSize):
 
 
 def stitchImages(imLeft, imRight, homography):
-    # get the width and height of panorama image
+    # compute the width and height of panorama image
     xlim, ylim = outputLimits(homography, imRight.shape[:2])
 
     heightLeft, widthLeft = imLeft.shape[:2]
@@ -42,35 +43,15 @@ def stitchImages(imLeft, imRight, homography):
     width = int(round(xMax - xMin))
     height = int(round(yMax - yMin))
 
-    # result = cv2.warpPerspective(
-    #     imRight, homography, (imRight.shape[1] + imLeft.shape[1], imRight.shape[0]))
-
-    # get all points's coordinate from right image
-    originCoords = np.where(imRight != None)
-    originCoords = np.array(
-        zip(originCoords[1], originCoords[0]), dtype='float64')
-    originCoords = originCoords.reshape(-1, 1, 2)
-
-    # get transformed coordinates
-    transformedCoords = cv2.perspectiveTransform(originCoords, homography)
-
-    # translate all points to the bottom right direction
-    if xMin < 0:
-        transformedCoords[:, :, 0] += abs(xMin)
-    if yMin < 0:
-        transformedCoords[:, :, 1] += abs(yMin)
-
-    # reshape to two-dimensional array
-    originCoords = originCoords.reshape(-1, 2)
-    transformedCoords = transformedCoords.reshape(-1, 2)
-
     # Map right image to panorama image
-    result = np.zeros((height, width, 3))
-
-    for old, new in zip(originCoords, transformedCoords):
-        newX, newY = int(new[0]) - 1, int(new[1]) - 1
-        oldX, oldY = int(old[0]) - 1, int(old[1]) - 1
-        result[newY, newX, :] = imRight[oldY, oldX, :]
+    translateMatrix = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    if xMin < 0:
+        translateMatrix[0, 2] = abs(xMin)
+    if yMin < 0:
+        translateMatrix[1, 2] = abs(yMin)
+    homography = np.dot(translateMatrix, homography)
+    result = cv2.warpPerspective(
+        imRight, homography, (width, height))
 
     # Map left image to panorama image
     xLow, xHigh = 0, imLeft.shape[1]
@@ -89,15 +70,12 @@ def stitchImages(imLeft, imRight, homography):
         imLeft[:, :, :], result[yLow:yHigh, xLow:xHigh, :])
 
     result = result.astype('uint8')
-    # cv2.imshow('figure', result)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
     return result
 
 
 def readImages(path):
     imgs = []
-    for imgPath in sorted(glob.glob(path + '*.jpg')):
+    for imgPath in sorted(glob.glob(path + '*')):
         img = cv2.imread(imgPath)
         img = cv2.resize(img, (0, 0), fx=0.5, fy=0.5)
         imgs.append(img)
@@ -125,12 +103,17 @@ def panorama(imgs):
 
 
 if __name__ == '__main__':
-    path = './img/moutainCopy/'
+    ap = argparse.ArgumentParser()
+    ap.add_argument("-d", "--dataset", required=True,
+                    help="Path to the directory that contains the images to be stitched")
+    args = vars(ap.parse_args())
+
+    path = args["dataset"]
     imgs = readImages(path)
     panoramaIm = panorama(imgs)
 
-    panoramaIm = cv2.resize(panoramaIm, (0, 0), fx=0.5, fy=0.5)
-    cv2.imshow('panoram', panoramaIm)
+    # panoramaIm = cv2.resize(panoramaIm, (0, 0), fx=0.4, fy=0.4)
+    cv2.imshow('panorama', panoramaIm)
 
     cv2.waitKey(0)
     cv2.destroyAllWindows()

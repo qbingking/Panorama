@@ -31,13 +31,18 @@ def estimateHomographyMatrix(kpts1, kpts2, matchedDescriptors, pairCoords):
     # Use svd to calculate vh
     _, _, vh = LA.svd(A, full_matrices=True)
 
-    # Then, select the last singular vector of vh
+    # Then, select the last singular vector of vh, which respects
+    # to the eigenvector of A* x A with smallest eigenvalue
+    # for total least squares minimization
     return vh[-1].reshape(3, 3)
 
 
 def manhattanDistance(p1, p2):
-    # print p1, p2
     return abs(p1[0] - p2[0]) + abs(p1[1] - p2[1])
+
+
+def euclidDistance(p1, p2):
+    return np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
 
 
 def getBestHomography(kps1, kps2, matchedDescriptors, pairCoords, threshold=5, iteration=100):
@@ -58,21 +63,19 @@ def getBestHomography(kps1, kps2, matchedDescriptors, pairCoords, threshold=5, i
             _pt = (int(_pt.item(0) / _pt.item(2)),
                    int(_pt.item(1) / _pt.item(2)))
 
-            dist = manhattanDistance(_pt, pcoord[1])
-            # print dist
+            dist = euclidDistance(_pt, pcoord[1])
 
             if dist <= threshold:
                 cntInliners += 1
-                pairPts.append((pcoord[0], _pt))
+                pairPts.append((pcoord[0], pcoord[1]))
 
         if cntInliners > bestCntInliers:
             bestCntInliers = cntInliners
             bestHomography = homography
             bestPairPts = pairPts
 
-    print 'The numbers of inliers between 2 images: {}'.format(bestCntInliers)
-    # print bestHomography
-    # print bestPairPts
+    print '#inliers between 2 images: {}'.format(bestCntInliers)
+
     return bestHomography, bestPairPts
 
 
@@ -85,8 +88,8 @@ def drawMatchedPts(image1, image2, pairPts):
 
 
 if __name__ == '__main__':
-    img1 = cv2.imread('./img/uttower/uttower_right.jpg')
-    img2 = cv2.imread('./img/uttower/uttower_left.jpg')
+    img1 = cv2.imread('./img/uttower/uttower_left.jpg')
+    img2 = cv2.imread('./img/uttower/uttower_right.jpg')
 
     img1 = cv2.resize(img1, (0, 0), fx=0.5, fy=0.5)
     img2 = cv2.resize(img2, (0, 0), fx=0.5, fy=0.5)
@@ -101,16 +104,12 @@ if __name__ == '__main__':
 
     pairCoords = getRelevantPairCoord(kps1, kps2, matchedDescriptors)
 
-    # print estimateHomographyMatrix(kps1, kps2, matchedDescriptors, pairCoords)
     h, pairPts = getBestHomography(kps1, kps2, matchedDescriptors, pairCoords)
 
     output = drawMatchedPts(img1, img2, pairPts)
 
     cv2.imshow('output_ransac', output)
     cv2.imwrite('./Output/output_ransac.png', output)
-
-    panorama = stitchImages(img1, img2, h)
-    cv2.imshow('panorama', panorama)
 
     cv2.waitKey(0)
     cv2.destroyAllWindows()
