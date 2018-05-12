@@ -1,6 +1,7 @@
 # Panorama
 
-Sample Output
+## Sample Output
+
 ![alt text](https://github.com/dantevergil304/Panorama/blob/master/output/hill.jpg)
 ![alt text](https://github.com/dantevergil304/Panorama/blob/master/output/ledge.jpg)
 ![alt text](https://github.com/dantevergil304/Panorama/blob/master/output/mountain.jpg)
