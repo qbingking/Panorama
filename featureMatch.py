@@ -1,50 +1,60 @@
 import cv2
 import numpy as np
 
-
+# Lấy key,des SIFT của 1 hình gray
 def extractSIFTFeature(grayscaleImage):
     sift = cv2.xfeatures2d.SIFT_create()
     keypoints, descriptors = sift.detectAndCompute(grayscaleImage, None)
     return keypoints, descriptors
 
-
+# khoảng cách bằng căn giữa 2 vecs ( des1- des2)^2
 def euclidDistance(descriptor1, descriptor2):
     return np.sqrt(np.sum((descriptor1 - descriptor2) ** 2))
 
-
+# với mỗi des 1 trong ảnh 1 -- tìm khoảng cách tốt nhất -- Des chứa Mô tả của nhiều keypoint mỗi key point là 1 vector 128
 def getDescriptorsDistance(descriptors1, descriptors2):
     desPairDist = []
-    for id1, des1 in enumerate(descriptors1):
+    #print('xxxx',len(descriptors1))
+    for id1, des1 in enumerate(descriptors1): #  list of tuple (count, value) == (id1, des1),  id1 là id của keypoint
         bestId = 0
-        bestDistance = float('inf')
+        bestDistance = float('inf') # infinity vô cực 
         # secondBestId = bestId
         secondBestDistance = bestDistance
         for id2, des2 in enumerate(descriptors2):
-            dis = euclidDistance(des1, des2)
-            if dis < bestDistance:
-                # secondBestId = bestId
+            dis = euclidDistance(des1, des2) # khoảng cách giữa 2 vec
+            #print("des1",[des1])
+            #break
+            if dis < bestDistance: # tìm khoảng cách nhỏ nhất
                 secondBestDistance = bestDistance
-
                 bestId = id2
                 bestDistance = dis
+                #if( secondBestDistance == float('inf')):
+                    #print("secondBestDistance:",secondBestDistance)
 
-        desPairDist.append((bestDistance / secondBestDistance, (id1, bestId)))
+        # (Distance, id1, id2)
+        desPairDist.append((bestDistance / secondBestDistance, (id1, bestId))) # bestID = id2 is best distance
+    #print("descriptors1",[i for i in descriptors1], len(descriptors1))
     return desPairDist
 
-
+# lấy những cặp kp mà khoảng cách nhỏ hơn 0.6
 def getMatchedDescriptors(descriptors1, descriptors2, threshold=0.6):
     desPairDist = getDescriptorsDistance(descriptors1, descriptors2)
-    sortedDesPairDist = sorted(desPairDist)
+    # print("desPairDist",desPairDist)
+    # die()
+    sortedDesPairDist = sorted(desPairDist) # Sort theo dis tăng dần
     index = 0
+    #đếm số keypoint <= threshold 
     for dis, (id1, id2) in sortedDesPairDist:
+        #print("dis",dis) [1,2,44,55,77,78,79] thres = 55 return [1,2,44,55]
         if dis > threshold:
             break
         index += 1
-    return sortedDesPairDist[:(index + 1)]
+    #print(sortedDesPairDist[:index])
+    return sortedDesPairDist[:index]
 
-
-def concatImages(image1, image2):
-    h1, w1, _ = image1.shape
+# nối im1 + im2 = hình lớn
+def concatImages(image1, image2): 
+    h1, w1, _ = image1.shape # return 3 tham số, lấy 2 cái đầu 
     h2, w2, _ = image2.shape
     maxHeight = max(h1, h2)
     totalWidth = w1 + w2
@@ -69,9 +79,9 @@ def normalizeVector(vector):
 
 
 if __name__ == "__main__":
-    # Read images
-    img1 = cv2.imread('./Pictures/a.png')
-    img2 = cv2.imread('./Pictures/b.png')
+    # Read images phải ghi full path
+    img1 = cv2.imread('./img/city/2.jpg')
+    img2 = cv2.imread('./img/city/1.jpg')
 
     # Convert to grayscale
     gray1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
@@ -88,7 +98,7 @@ if __name__ == "__main__":
     # Write output image
     outputImage = drawMatchedPts(img1, img2, kp1, kp2, des1, des2)
     cv2.imshow('figure', outputImage)
-    cv2.imwrite('./Output/output.png', outputImage)
+    # cv2.imwrite('./Output/output.png', outputImage)
 
     cv2.waitKey(0)
     cv2.destroyAllWindows()
